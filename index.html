@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test vocacional UTP</title>
+<style>
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 18px; line-height: 1.5; color: #111; background: #fff; margin: 0; }
+main { max-width: 640px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 8px 0 12px; }
+h2 { font-size: 21px; line-height: 1.25; margin: 0 0 6px; }
+fieldset { border: 0; border-top: 2px solid #ccc; margin: 28px 0 0; padding: 14px 0 0; }
+legend { font-size: 21px; font-weight: bold; padding: 0 8px 0 0; }
+.ayuda { color: #444; margin: 4px 0 10px; }
+label { display: block; }
+.dato label { font-weight: bold; margin-top: 14px; }
+input[type="text"], input[type="email"], input[type="tel"] { display: block; width: 100%; font: inherit; padding: 10px; margin-top: 4px; border: 2px solid #777; border-radius: 4px; box-sizing: border-box; }
+.opcion { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #ddd; }
+.opcion input { width: 24px; height: 24px; margin: 2px 0 0; flex: none; }
+.dato .opcion label { margin-top: 0; }
+.opcion small { display: block; color: #444; font-size: 15px; }
+.error, .errores { color: #b00020; font-weight: bold; }
+.errores { border: 2px solid #b00020; padding: 10px; margin-top: 20px; }
+.errores ul { margin: 6px 0 0; padding-left: 20px; }
+button { font: inherit; font-weight: bold; padding: 12px 20px; margin-top: 20px; border: 2px solid #111; border-radius: 4px; background: #111; color: #fff; cursor: pointer; }
+button.sec { background: #fff; color: #111; }
+ol.top { padding-left: 22px; }
+ol.top li { margin: 0 0 22px; }
+.pct { font-weight: bold; }
+.meta { color: #444; font-size: 16px; }
+.coincide { color: #444; font-size: 16px; }
+a { color: #0645ad; }
+#depuracion { font: 12px/1.4 monospace; white-space: pre-wrap; border: 1px dashed #888; padding: 8px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <noscript><p>Este test necesita JavaScript. Actívalo en tu navegador para continuar.</p></noscript>
+
+  <section id="vista-form">
+    <h1>Test vocacional de la UTP</h1>
+    <p>Responde estas preguntas y te mostramos los 3 pregrados de la Universidad Tecnológica de Pereira con más afinidad contigo. Toma unos 3 minutos.</p>
+
+    <form id="form" novalidate>
+      <fieldset class="dato">
+        <legend>1. Tus datos</legend>
+        <label for="nombre">Nombre completo</label>
+        <input type="text" id="nombre" autocomplete="name" maxlength="80">
+        <label for="correo">Correo electrónico</label>
+        <input type="email" id="correo" autocomplete="email" inputmode="email" maxlength="100">
+        <label for="celular">Celular</label>
+        <input type="tel" id="celular" autocomplete="tel" inputmode="tel" maxlength="20">
+        <div class="opcion" style="margin-top:16px">
+          <input type="checkbox" id="autoriza">
+          <label for="autoriza"><b>Sí, autorizo el tratamiento de mis datos</b></label>
+        </div>
+        <details>
+          <summary>Leer el texto completo</summary>
+          <p>Autorizo a la Universidad Tecnológica de Pereira para tratar mis datos personales (nombre, correo electrónico y celular) con el fin de enviarme mi resultado del test vocacional e información sobre su oferta académica y sus eventos, de acuerdo con la Ley 1581 de 2012. Si soy menor de edad, cuento con la autorización de mi madre, padre o acudiente. Puedo pedir que actualicen o eliminen mis datos en cualquier momento.</p>
+        </details>
+      </fieldset>
+
+      <fieldset id="f-area">
+        <legend>2. ¿Qué área te llama más la atención?</legend>
+        <p class="ayuda">Elige una.</p>
+        <div id="op-area"></div>
+      </fieldset>
+
+      <fieldset id="f-fort">
+        <legend>3. ¿En qué eres fuerte?</legend>
+        <p class="ayuda">Elige dos. <span id="contador" aria-live="polite">Llevas 0 de 2.</span></p>
+        <div id="op-fort"></div>
+      </fieldset>
+
+      <fieldset id="f-obj">
+        <legend>4. ¿Qué quieres lograr con tu profesión?</legend>
+        <p class="ayuda">Elige uno.</p>
+        <div id="op-obj"></div>
+      </fieldset>
+
+      <div id="errores" class="errores" role="alert" tabindex="-1" hidden></div>
+      <button type="submit">Ver mi top 3</button>
+    </form>
+  </section>
+
+  <section id="vista-res" hidden>
+    <h1 id="t-res" tabindex="-1">Tus 3 pregrados con más afinidad</h1>
+    <p id="res-saludo"></p>
+    <ol class="top" id="res-lista"></ol>
+    <p class="ayuda">Este resultado es una orientación inicial, no un diagnóstico. Conoce cada programa y habla con nosotros para decidir con más información.</p>
+    <p><a href="https://www.utp.edu.co/" target="_blank" rel="noopener">Conoce la oferta académica en utp.edu.co</a></p>
+    <p class="meta" id="res-codigo"></p>
+    <button type="button" class="sec" id="otra-vez">Hacer el test otra vez</button>
+  </section>
+
+  <pre id="depuracion" hidden></pre>
+</main>
+
+<script>
+"use strict";
+
+/* ====================================================================
+   CONFIGURACIÓN: Google Forms donde caen los datos.
+   - "url" termina en /formResponse (no /viewform).
+   - "campos" liga cada dato con su número entry.XXXX del Form.
+   - Un campo en null se omite.
+   ==================================================================== */
+const CONFIG = {
+  registro: {
+    url: "https://docs.google.com/forms/d/e/1FAIpQLSc1IGHszz1TIgxAjKnnKukMK3sWtn6CRfiQLcLcL2jor7AhIQ/formResponse",
+    campos: {
+      codigo: "entry.1901447343",
+      nombre: "entry.1145678100",
+      correo: "entry.219937311",
+      celular: "entry.792166020",
+      autorizacion: "entry.1236441538"
+    },
+    textoAutorizacion: "Sí, autorizo el tratamiento de mis datos"
+  },
+  resultado: {
+    url: "https://docs.google.com/forms/d/e/1FAIpQLSckR4Qskyo0NzYPKCO3bucp4may1OlTZYrkPTM4uarouDLJxA/formResponse",
+    campos: {
+      codigo: "entry.1249317865",
+      area: "entry.1918119877",
+      t1: "entry.375879812",  p1: "entry.536228958",
+      t2: "entry.1519094436", p2: "entry.704308209",
+      t3: "entry.119252018",  p3: "entry.96112473",
+      /* Opcionales: se envían solo si les pones su entry.XXXX. */
+      fortaleza1: null,
+      fortaleza2: null,
+      objetivo: null,
+      origen: null
+    },
+    valorOrigen: "Web"
+  }
+};
+
+/* Misma matriz del juego (data/programas.json) */
+const DATOS = {"areas":["Tecnología y computación","Matemáticas y ciencias exactas","Ciencias naturales y experimentales","Ingeniería y tecnología aplicada","Electricidad, electrónica y automatización","Industria, manufactura y producción","Medio ambiente y sostenibilidad","Agro, territorio y naturaleza","Administración, negocios y emprendimiento","Educación y enseñanza","Comunicación, medios y creatividad","Turismo, cultura y servicios","Salud y cuidado","Artes, música y expresión creativa","Sociedad, cultura y humanidades","Deporte, actividad física y recreación","Idiomas, lenguas y comunicación intercultural"],"fortalezas":["Razonamiento matemático","Pensamiento lógico","Creatividad e imaginación","Comunicación","Curiosidad e investigación","Afinidad con la tecnología","Liderazgo e iniciativa","Resolución de problemas","Habilidad práctica","Análisis e interpretación de información","Organización y gestión","Sensibilidad ambiental","Trabajo con personas y empatía","Atención al detalle y precisión","Sensibilidad y expresión artística","Pensamiento crítico"],"objetivos":["Crear y desarrollar tecnología","Investigar y generar conocimiento","Diseñar, construir o mejorar soluciones","Dirigir empresas, equipos o proyectos","Crear mi propio negocio o emprender","Trabajar por el medio ambiente y la sostenibilidad","Enseñar y formar a otras personas","Trabajar en industria, producción y procesos","Contribuir al desarrollo del campo y los territorios","Trabajar con personas y contribuir a la sociedad","Desarrollarme en turismo, cultura y servicios","Analizar información y resolver problemas complejos","Cuidar la salud y mejorar el bienestar","Crear, interpretar o desarrollar expresiones artísticas y culturales"],"programas":[{"nombre":"Tecnología en Gestión del Turismo Sostenible","nivel":"Tecnología","facultad":"Facultad de Ciencias Ambientales","modalidad":"Presencial · Nocturna","areas":["Turismo, cultura y servicios","Medio ambiente y sostenibilidad","Administración, negocios y emprendimiento"],"fortalezas":["Trabajo con personas y empatía","Comunicación","Organización y gestión","Creatividad e imaginación"],"objetivos":["Desarrollarme en turismo, cultura y servicios","Crear mi propio negocio o emprender","Dirigir empresas, equipos o proyectos"],"descripcion":"Gestiona servicios y experiencias turísticas con enfoque sostenible, integrando alojamiento, gastronomía, patrimonio, mercadeo y gestión ambiental.","desempate":2},{"nombre":"Administración Ambiental","nivel":"Profesional universitario","facultad":"Facultad de Ciencias Ambientales","modalidad":"Presencial · Diurna","areas":["Medio ambiente y sostenibilidad","Administración, negocios y emprendimiento","Agro, territorio y naturaleza"],"fortalezas":["Sensibilidad ambiental","Organización y gestión","Análisis e interpretación de información","Resolución de problemas"],"objetivos":["Trabajar por el medio ambiente y la sostenibilidad","Dirigir empresas, equipos o proyectos","Trabajar con personas y contribuir a la sociedad"],"descripcion":"Gestiona programas, proyectos y organizaciones frente a retos ambientales, territoriales y de sostenibilidad.","desempate":3},{"nombre":"Licenciatura en Tecnología","nivel":"Licenciatura","facultad":"Facultad de Ciencias de la Educación","modalidad":"Presencial · Diurna","areas":["Educación y enseñanza","Tecnología y computación","Comunicación, medios y creatividad"],"fortalezas":["Comunicación","Trabajo con personas y empatía","Creatividad e imaginación","Afinidad con la tecnología"],"objetivos":["Enseñar y formar a otras personas","Trabajar con personas y contribuir a la sociedad"],"descripcion":"Forma docentes que integran tecnología, comunicación e informática en procesos educativos y proyectos pedagógicos mediados por TIC.","desempate":4},{"nombre":"Ingeniería Física","nivel":"Ingeniería","facultad":"Facultad de Ingenierías","modalidad":"Presencial · Diurna","areas":["Matemáticas y ciencias exactas","Ciencias naturales y experimentales","Ingeniería y tecnología aplicada"],"fortalezas":["Razonamiento matemático","Pensamiento lógico","Curiosidad e investigación","Resolución de problemas"],"objetivos":["Investigar y generar conocimiento","Diseñar, construir o mejorar soluciones","Analizar información y resolver problemas complejos"],"descripcion":"Combina física, matemáticas e ingeniería para investigar y desarrollar soluciones en instrumentación, materiales, óptica, metrología y sistemas físicos.","desempate":5},{"nombre":"Ingeniería Electrónica","nivel":"Ingeniería","facultad":"Facultad de Ingenierías","modalidad":"Presencial · Diurna (jornada especial)","areas":["Electricidad, electrónica y automatización","Tecnología y computación","Ingeniería y tecnología aplicada"],"fortalezas":["Afinidad con la tecnología","Pensamiento lógico","Resolución de problemas","Creatividad e imaginación"],"objetivos":["Crear y desarrollar tecnología","Diseñar, construir o mejorar soluciones"],"descripcion":"Diseña y gestiona sistemas electrónicos aplicados a automatización, comunicaciones, sistemas embebidos, datos y control.","desempate":6},{"nombre":"Tecnología Química","nivel":"Tecnología","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Ciencias naturales y experimentales","Industria, manufactura y producción"],"fortalezas":["Atención al detalle y precisión","Habilidad práctica","Curiosidad e investigación","Análisis e interpretación de información"],"objetivos":["Trabajar en industria, producción y procesos","Investigar y generar conocimiento"],"descripcion":"Aplica análisis químicos y control de calidad en laboratorio y procesos productivos de la industria química.","desempate":7},{"nombre":"Ingeniería en Procesos Sostenibles de las Maderas","nivel":"Ingeniería","facultad":"Facultad de Ciencias Agrarias y Agroindustria","modalidad":"Presencial · Diurna","areas":["Industria, manufactura y producción","Medio ambiente y sostenibilidad","Agro, territorio y naturaleza"],"fortalezas":["Resolución de problemas","Habilidad práctica","Sensibilidad ambiental","Organización y gestión"],"objetivos":["Trabajar en industria, producción y procesos","Trabajar por el medio ambiente y la sostenibilidad","Diseñar, construir o mejorar soluciones"],"descripcion":"Mejora el aprovechamiento y transformación de la madera mediante procesos industriales, tecnológicos y ambientalmente responsables.","desempate":8},{"nombre":"Tecnología en Producción Agrícola","nivel":"Tecnología","facultad":"Facultad de Ciencias Agrarias y Agroindustria","modalidad":"Presencial · Diurna","areas":["Agro, territorio y naturaleza","Medio ambiente y sostenibilidad","Administración, negocios y emprendimiento"],"fortalezas":["Habilidad práctica","Sensibilidad ambiental","Organización y gestión","Liderazgo e iniciativa"],"objetivos":["Contribuir al desarrollo del campo y los territorios","Crear mi propio negocio o emprender","Trabajar por el medio ambiente y la sostenibilidad"],"descripcion":"Gestiona sistemas de producción agrícola, cultivos, poscosecha y agronegocios con enfoque territorial y sostenible.","desempate":9},{"nombre":"Tecnología en Producción Forestal","nivel":"Tecnología","facultad":"Facultad de Ciencias Agrarias y Agroindustria","modalidad":"Presencial · Diurna","areas":["Agro, territorio y naturaleza","Medio ambiente y sostenibilidad"],"fortalezas":["Sensibilidad ambiental","Habilidad práctica","Atención al detalle y precisión"],"objetivos":["Contribuir al desarrollo del campo y los territorios","Trabajar por el medio ambiente y la sostenibilidad"],"descripcion":"Gestiona inventarios, silvicultura, aprovechamiento y producción forestal con criterios de sostenibilidad y certificación.","desempate":10},{"nombre":"Física","nivel":"Profesional universitario","facultad":"Facultad de Ciencias Básicas","modalidad":"Presencial · Diurna","areas":["Matemáticas y ciencias exactas","Ciencias naturales y experimentales"],"fortalezas":["Razonamiento matemático","Curiosidad e investigación","Pensamiento lógico","Análisis e interpretación de información"],"objetivos":["Investigar y generar conocimiento","Analizar información y resolver problemas complejos"],"descripcion":"Estudia, modela e investiga fenómenos naturales mediante matemáticas, experimentación y herramientas computacionales.","desempate":11},{"nombre":"Matemática","nivel":"Profesional universitario","facultad":"Facultad de Ciencias Básicas","modalidad":"Presencial · Diurna","areas":["Matemáticas y ciencias exactas","Tecnología y computación"],"fortalezas":["Razonamiento matemático","Pensamiento lógico","Análisis e interpretación de información","Resolución de problemas"],"objetivos":["Analizar información y resolver problemas complejos","Investigar y generar conocimiento"],"descripcion":"Desarrolla y aplica modelos y métodos matemáticos en investigación, consultoría, datos y problemas cuantitativos.","desempate":12},{"nombre":"Ingeniería de Manufactura","nivel":"Ingeniería","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Industria, manufactura y producción","Ingeniería y tecnología aplicada"],"fortalezas":["Resolución de problemas","Habilidad práctica","Organización y gestión","Afinidad con la tecnología"],"objetivos":["Trabajar en industria, producción y procesos","Diseñar, construir o mejorar soluciones","Dirigir empresas, equipos o proyectos"],"descripcion":"Diseña, organiza y mejora procesos, operaciones y productos de manufactura integrando calidad, automatización y gestión tecnológica.","desempate":13},{"nombre":"Tecnología Eléctrica","nivel":"Tecnología","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Electricidad, electrónica y automatización","Ingeniería y tecnología aplicada"],"fortalezas":["Resolución de problemas","Afinidad con la tecnología","Análisis e interpretación de información","Pensamiento lógico"],"objetivos":["Diseñar, construir o mejorar soluciones","Trabajar en industria, producción y procesos"],"descripcion":"Analiza, opera y mantiene sistemas eléctricos, máquinas, transmisión, distribución, protecciones y control.","desempate":14},{"nombre":"Administración Industrial","nivel":"Profesional universitario","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Administración, negocios y emprendimiento","Industria, manufactura y producción"],"fortalezas":["Liderazgo e iniciativa","Organización y gestión","Comunicación","Análisis e interpretación de información"],"objetivos":["Dirigir empresas, equipos o proyectos","Crear mi propio negocio o emprender","Trabajar en industria, producción y procesos"],"descripcion":"Dirige organizaciones integrando estrategia, finanzas, mercadeo, talento humano, producción, calidad, logística y proyectos.","desempate":15},{"nombre":"Licenciatura en Artes Visuales","nivel":"Licenciatura","facultad":"Facultad de Bellas Artes y Humanidades","modalidad":"Presencial · Diurna","areas":["Artes, música y expresión creativa","Educación y enseñanza","Sociedad, cultura y humanidades"],"fortalezas":["Sensibilidad y expresión artística","Creatividad e imaginación","Comunicación","Trabajo con personas y empatía"],"objetivos":["Crear, interpretar o desarrollar expresiones artísticas y culturales","Enseñar y formar a otras personas","Trabajar con personas y contribuir a la sociedad"],"descripcion":"Forma creadores y docentes en artes visuales con capacidad para desarrollar procesos artísticos, pedagógicos y culturales.","desempate":16},{"nombre":"Licenciatura en Filosofía","nivel":"Licenciatura","facultad":"Facultad de Bellas Artes y Humanidades","modalidad":"Presencial · Diurna","areas":["Sociedad, cultura y humanidades","Educación y enseñanza"],"fortalezas":["Pensamiento crítico","Curiosidad e investigación","Comunicación","Pensamiento lógico"],"objetivos":["Enseñar y formar a otras personas","Investigar y generar conocimiento"],"descripcion":"Forma docentes e investigadores capaces de analizar críticamente problemas filosóficos, éticos, políticos y del conocimiento.","desempate":17},{"nombre":"Licenciatura en Bilingüismo con Énfasis en Inglés","nivel":"Licenciatura","facultad":"Facultad de Bellas Artes y Humanidades","modalidad":"Presencial · Diurna","areas":["Idiomas, lenguas y comunicación intercultural","Educación y enseñanza","Sociedad, cultura y humanidades"],"fortalezas":["Comunicación","Trabajo con personas y empatía","Curiosidad e investigación","Pensamiento crítico"],"objetivos":["Enseñar y formar a otras personas","Trabajar con personas y contribuir a la sociedad"],"descripcion":"Forma docentes de inglés con competencias lingüísticas, pedagógicas, investigativas e interculturales.","desempate":18},{"nombre":"Licenciatura en Música","nivel":"Licenciatura","facultad":"Facultad de Bellas Artes y Humanidades","modalidad":"Presencial · Diurna","areas":["Artes, música y expresión creativa","Educación y enseñanza"],"fortalezas":["Sensibilidad y expresión artística","Creatividad e imaginación","Comunicación","Habilidad práctica"],"objetivos":["Crear, interpretar o desarrollar expresiones artísticas y culturales","Enseñar y formar a otras personas"],"descripcion":"Integra formación musical, interpretación, creación y pedagogía para el desempeño artístico y educativo.","desempate":19},{"nombre":"Administración del Turismo Sostenible","nivel":"Profesional universitario","facultad":"Facultad de Ciencias Ambientales","modalidad":"Presencial · Diurna","areas":["Turismo, cultura y servicios","Administración, negocios y emprendimiento","Medio ambiente y sostenibilidad"],"fortalezas":["Organización y gestión","Liderazgo e iniciativa","Comunicación","Trabajo con personas y empatía"],"objetivos":["Dirigir empresas, equipos o proyectos","Desarrollarme en turismo, cultura y servicios","Crear mi propio negocio o emprender"],"descripcion":"Gestiona organizaciones, destinos, productos y servicios turísticos con enfoque empresarial y sostenible.","desempate":20},{"nombre":"Licenciatura en Educación Infantil","nivel":"Licenciatura","facultad":"Facultad de Ciencias de la Educación","modalidad":"Presencial · Diurna","areas":["Educación y enseñanza","Sociedad, cultura y humanidades"],"fortalezas":["Trabajo con personas y empatía","Creatividad e imaginación","Comunicación","Sensibilidad y expresión artística"],"objetivos":["Enseñar y formar a otras personas","Trabajar con personas y contribuir a la sociedad"],"descripcion":"Forma docentes para acompañar el desarrollo integral y aprendizaje de niños en primera infancia mediante experiencias pedagógicas, lúdicas y expresivas.","desempate":21},{"nombre":"Licenciatura en Ciencias Sociales","nivel":"Licenciatura","facultad":"Facultad de Ciencias de la Educación","modalidad":"Presencial · Diurna","areas":["Sociedad, cultura y humanidades","Educación y enseñanza"],"fortalezas":["Pensamiento crítico","Comunicación","Curiosidad e investigación","Análisis e interpretación de información"],"objetivos":["Enseñar y formar a otras personas","Investigar y generar conocimiento","Trabajar con personas y contribuir a la sociedad"],"descripcion":"Forma docentes para comprender y enseñar procesos sociales, históricos, territoriales y culturales con enfoque crítico e investigativo.","desempate":22},{"nombre":"Licenciatura en Educación Básica Primaria","nivel":"Licenciatura","facultad":"Facultad de Ciencias de la Educación","modalidad":"Presencial · Diurna","areas":["Educación y enseñanza","Sociedad, cultura y humanidades"],"fortalezas":["Comunicación","Organización y gestión","Pensamiento crítico","Creatividad e imaginación"],"objetivos":["Enseñar y formar a otras personas","Trabajar con personas y contribuir a la sociedad"],"descripcion":"Forma docentes integrales para orientar las distintas áreas de la educación básica primaria y gestionar procesos pedagógicos interdisciplinarios.","desempate":23},{"nombre":"Licenciatura en Literatura y Lengua Castellana","nivel":"Licenciatura","facultad":"Facultad de Ciencias de la Educación","modalidad":"Presencial · Diurna","areas":["Educación y enseñanza","Sociedad, cultura y humanidades","Comunicación, medios y creatividad"],"fortalezas":["Comunicación","Pensamiento crítico","Creatividad e imaginación","Curiosidad e investigación"],"objetivos":["Enseñar y formar a otras personas","Investigar y generar conocimiento"],"descripcion":"Forma docentes en literatura, lengua y producción textual, articulando análisis crítico, creación, investigación y pedagogía.","desempate":24},{"nombre":"Licenciatura en Etnoeducación","nivel":"Licenciatura","facultad":"Facultad de Ciencias de la Educación","modalidad":"Presencial · Diurna","areas":["Sociedad, cultura y humanidades","Educación y enseñanza"],"fortalezas":["Pensamiento crítico","Trabajo con personas y empatía","Comunicación","Curiosidad e investigación"],"objetivos":["Enseñar y formar a otras personas","Trabajar con personas y contribuir a la sociedad","Investigar y generar conocimiento"],"descripcion":"Forma docentes para contextos diversos e interculturales, con énfasis en comunidades, identidad, territorio y procesos socioeducativos.","desempate":25},{"nombre":"Ciencias del Deporte y la Recreación","nivel":"Profesional universitario","facultad":"Facultad de Ciencias de la Salud","modalidad":"Presencial · Diurna","areas":["Deporte, actividad física y recreación","Salud y cuidado"],"fortalezas":["Habilidad práctica","Trabajo con personas y empatía","Liderazgo e iniciativa","Organización y gestión"],"objetivos":["Cuidar la salud y mejorar el bienestar","Trabajar con personas y contribuir a la sociedad","Dirigir empresas, equipos o proyectos"],"descripcion":"Forma profesionales para intervenir en actividad física, deporte, recreación, entrenamiento, bienestar y gestión deportiva.","desempate":26},{"nombre":"Medicina Veterinaria y Zootecnia","nivel":"Profesional universitario","facultad":"Facultad de Ciencias de la Salud","modalidad":"Presencial · Diurna","areas":["Salud y cuidado","Ciencias naturales y experimentales","Agro, territorio y naturaleza"],"fortalezas":["Habilidad práctica","Atención al detalle y precisión","Análisis e interpretación de información","Sensibilidad ambiental"],"objetivos":["Cuidar la salud y mejorar el bienestar","Contribuir al desarrollo del campo y los territorios","Investigar y generar conocimiento"],"descripcion":"Aborda salud y producción animal integrando ciencias biológicas, clínica veterinaria, zootecnia y desarrollo agropecuario.","desempate":27},{"nombre":"Medicina","nivel":"Profesional universitario","facultad":"Facultad de Ciencias de la Salud","modalidad":"Presencial · Diurna","areas":["Salud y cuidado","Ciencias naturales y experimentales"],"fortalezas":["Trabajo con personas y empatía","Pensamiento crítico","Análisis e interpretación de información","Atención al detalle y precisión"],"objetivos":["Cuidar la salud y mejorar el bienestar","Trabajar con personas y contribuir a la sociedad","Investigar y generar conocimiento"],"descripcion":"Forma médicos para prevenir, diagnosticar y tratar problemas de salud del individuo, la familia y la comunidad.","desempate":28},{"nombre":"Tecnología en Atención Prehospitalaria","nivel":"Tecnología","facultad":"Facultad de Ciencias de la Salud","modalidad":"Presencial · Nocturna","areas":["Salud y cuidado"],"fortalezas":["Habilidad práctica","Resolución de problemas","Trabajo con personas y empatía","Pensamiento crítico"],"objetivos":["Cuidar la salud y mejorar el bienestar","Trabajar con personas y contribuir a la sociedad"],"descripcion":"Forma tecnólogos para responder a urgencias y emergencias, brindar atención inicial y apoyar sistemas prehospitalarios.","desempate":29},{"nombre":"Administración de Empresas","nivel":"Profesional universitario","facultad":"Facultad de Ciencias Empresariales","modalidad":"Presencial · Nocturna (jornada especial)","areas":["Administración, negocios y emprendimiento"],"fortalezas":["Liderazgo e iniciativa","Organización y gestión","Comunicación","Análisis e interpretación de información"],"objetivos":["Dirigir empresas, equipos o proyectos","Crear mi propio negocio o emprender"],"descripcion":"Forma administradores con visión emprendedora para liderar organizaciones, proyectos, procesos comerciales y decisiones empresariales.","desempate":30},{"nombre":"Ingeniería Industrial","nivel":"Ingeniería","facultad":"Facultad de Ciencias Empresariales","modalidad":"Presencial · Diurna / Nocturna (jornada especial)","areas":["Industria, manufactura y producción","Administración, negocios y emprendimiento","Ingeniería y tecnología aplicada"],"fortalezas":["Resolución de problemas","Organización y gestión","Análisis e interpretación de información","Liderazgo e iniciativa"],"objetivos":["Trabajar en industria, producción y procesos","Dirigir empresas, equipos o proyectos","Diseñar, construir o mejorar soluciones"],"descripcion":"Optimiza sistemas productivos y organizacionales mediante ingeniería, análisis, gestión, calidad, logística y mejoramiento de procesos.","desempate":31},{"nombre":"Ingeniería Civil","nivel":"Ingeniería","facultad":"Facultad de Mecánica Aplicada","modalidad":"Presencial · Diurna","areas":["Ingeniería y tecnología aplicada","Matemáticas y ciencias exactas"],"fortalezas":["Resolución de problemas","Razonamiento matemático","Organización y gestión","Habilidad práctica"],"objetivos":["Diseñar, construir o mejorar soluciones","Dirigir empresas, equipos o proyectos"],"descripcion":"Planea, diseña y ejecuta soluciones de infraestructura aplicando ciencias, ingeniería, gestión y análisis del entorno.","desempate":32},{"nombre":"Ingeniería Mecánica","nivel":"Ingeniería","facultad":"Facultad de Mecánica Aplicada","modalidad":"Presencial · Diurna","areas":["Ingeniería y tecnología aplicada","Industria, manufactura y producción"],"fortalezas":["Resolución de problemas","Habilidad práctica","Razonamiento matemático","Afinidad con la tecnología"],"objetivos":["Diseñar, construir o mejorar soluciones","Trabajar en industria, producción y procesos"],"descripcion":"Diseña, analiza y mejora máquinas, sistemas mecánicos, procesos energéticos y soluciones para la industria.","desempate":33},{"nombre":"Ingeniería Eléctrica","nivel":"Ingeniería","facultad":"Facultad de Ingenierías","modalidad":"Presencial · Diurna","areas":["Electricidad, electrónica y automatización","Ingeniería y tecnología aplicada"],"fortalezas":["Resolución de problemas","Razonamiento matemático","Afinidad con la tecnología","Análisis e interpretación de información"],"objetivos":["Diseñar, construir o mejorar soluciones","Crear y desarrollar tecnología","Trabajar en industria, producción y procesos"],"descripcion":"Diseña y gestiona sistemas de generación, transmisión, distribución, conversión y uso de la energía eléctrica.","desempate":34},{"nombre":"Ingeniería de Sistemas y Computación","nivel":"Ingeniería","facultad":"Facultad de Ingenierías","modalidad":"Presencial · Diurna / Nocturna (jornada especial)","areas":["Tecnología y computación","Ingeniería y tecnología aplicada"],"fortalezas":["Pensamiento lógico","Afinidad con la tecnología","Resolución de problemas","Creatividad e imaginación"],"objetivos":["Crear y desarrollar tecnología","Diseñar, construir o mejorar soluciones","Analizar información y resolver problemas complejos"],"descripcion":"Diseña soluciones de software, sistemas computacionales y servicios tecnológicos para resolver problemas de organizaciones y sociedad.","desempate":35},{"nombre":"Tecnología en Desarrollo del Software","nivel":"Tecnología","facultad":"Facultad de Ingenierías","modalidad":"Presencial · Diurna","areas":["Tecnología y computación"],"fortalezas":["Pensamiento lógico","Afinidad con la tecnología","Resolución de problemas","Creatividad e imaginación"],"objetivos":["Crear y desarrollar tecnología","Diseñar, construir o mejorar soluciones"],"descripcion":"Forma tecnólogos para analizar, construir, probar e implementar soluciones de software y aplicaciones.","desempate":36},{"nombre":"Tecnología Industrial","nivel":"Tecnología","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Industria, manufactura y producción","Administración, negocios y emprendimiento"],"fortalezas":["Organización y gestión","Análisis e interpretación de información","Resolución de problemas","Liderazgo e iniciativa"],"objetivos":["Trabajar en industria, producción y procesos","Dirigir empresas, equipos o proyectos"],"descripcion":"Apoya la gestión y mejoramiento de procesos productivos, administrativos, de calidad y operaciones industriales.","desempate":37},{"nombre":"Tecnología en Gestión Logística","nivel":"Tecnología","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Administración, negocios y emprendimiento","Industria, manufactura y producción"],"fortalezas":["Organización y gestión","Análisis e interpretación de información","Resolución de problemas","Atención al detalle y precisión"],"objetivos":["Dirigir empresas, equipos o proyectos","Trabajar en industria, producción y procesos"],"descripcion":"Gestiona abastecimiento, inventarios, almacenamiento, distribución y operaciones logísticas en organizaciones.","desempate":38},{"nombre":"Ingeniería Mecatrónica","nivel":"Ingeniería","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Electricidad, electrónica y automatización","Ingeniería y tecnología aplicada","Tecnología y computación"],"fortalezas":["Afinidad con la tecnología","Resolución de problemas","Pensamiento lógico","Habilidad práctica"],"objetivos":["Crear y desarrollar tecnología","Diseñar, construir o mejorar soluciones","Trabajar en industria, producción y procesos"],"descripcion":"Integra mecánica, electrónica, control y computación para diseñar sistemas automatizados y soluciones mecatrónicas.","desempate":39},{"nombre":"Tecnología en Procesos de Fabricación Metalmecánica","nivel":"Tecnología","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Industria, manufactura y producción","Ingeniería y tecnología aplicada"],"fortalezas":["Habilidad práctica","Atención al detalle y precisión","Resolución de problemas","Afinidad con la tecnología"],"objetivos":["Trabajar en industria, producción y procesos","Diseñar, construir o mejorar soluciones"],"descripcion":"Aplica procesos de fabricación, mecanizado y transformación metalmecánica con criterios técnicos, de calidad y productividad.","desempate":40},{"nombre":"Química Industrial","nivel":"Profesional universitario","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Ciencias naturales y experimentales","Industria, manufactura y producción"],"fortalezas":["Atención al detalle y precisión","Análisis e interpretación de información","Curiosidad e investigación","Resolución de problemas"],"objetivos":["Trabajar en industria, producción y procesos","Investigar y generar conocimiento","Diseñar, construir o mejorar soluciones"],"descripcion":"Aplica la química al análisis, control, investigación y transformación de materiales y procesos de la industria.","desempate":41},{"nombre":"Tecnología en Diseño y Construcción de Instalaciones Eléctricas de Media y Baja Tensión","nivel":"Tecnología","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Electricidad, electrónica y automatización","Ingeniería y tecnología aplicada"],"fortalezas":["Habilidad práctica","Atención al detalle y precisión","Afinidad con la tecnología","Organización y gestión"],"objetivos":["Diseñar, construir o mejorar soluciones","Trabajar en industria, producción y procesos"],"descripcion":"Diseña y ejecuta instalaciones eléctricas de media y baja tensión, redes, iluminación y proyectos eléctricos aplicados.","desempate":42},{"nombre":"Tecnología en Desarrollo de Procesos Químicos Sostenibles","nivel":"Tecnología","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Ciencias naturales y experimentales","Medio ambiente y sostenibilidad","Agro, territorio y naturaleza"],"fortalezas":["Habilidad práctica","Atención al detalle y precisión","Sensibilidad ambiental","Análisis e interpretación de información"],"objetivos":["Trabajar por el medio ambiente y la sostenibilidad","Trabajar en industria, producción y procesos","Contribuir al desarrollo del campo y los territorios"],"descripcion":"Desarrolla y opera procesos químicos con orientación sostenible y aplicaciones productivas y agroindustriales.","desempate":43},{"nombre":"Tecnología en Regencia de Farmacia","nivel":"Tecnología","facultad":"Facultad de Tecnología","modalidad":"Presencial · Diurna","areas":["Salud y cuidado","Administración, negocios y emprendimiento"],"fortalezas":["Atención al detalle y precisión","Organización y gestión","Trabajo con personas y empatía","Análisis e interpretación de información"],"objetivos":["Cuidar la salud y mejorar el bienestar","Trabajar con personas y contribuir a la sociedad","Dirigir empresas, equipos o proyectos"],"descripcion":"Gestiona servicios farmacéuticos, medicamentos e inventarios con criterios sanitarios, administrativos y de atención al usuario.","desempate":44},{"nombre":"Ingeniería en Procesos Agroindustriales","nivel":"Ingeniería","facultad":"Facultad de Ciencias Agrarias y Agroindustria","modalidad":"Presencial · Por confirmar","areas":["Industria, manufactura y producción","Agro, territorio y naturaleza","Ingeniería y tecnología aplicada"],"fortalezas":["Resolución de problemas","Habilidad práctica","Organización y gestión","Afinidad con la tecnología"],"objetivos":["Trabajar en industria, producción y procesos","Diseñar, construir o mejorar soluciones","Contribuir al desarrollo del campo y los territorios"],"descripcion":"Aplica ingeniería al diseño, transformación y mejoramiento de procesos agroindustriales y cadenas productivas del sector rural.","desempate":45},{"nombre":"Tecnología en Producción Agrícola Integrada","nivel":"Tecnología","facultad":"Facultad de Ciencias Agrarias y Agroindustria","modalidad":"Presencial · Por confirmar","areas":["Agro, territorio y naturaleza","Medio ambiente y sostenibilidad"],"fortalezas":["Habilidad práctica","Sensibilidad ambiental","Atención al detalle y precisión","Organización y gestión"],"objetivos":["Contribuir al desarrollo del campo y los territorios","Trabajar por el medio ambiente y la sostenibilidad","Trabajar en industria, producción y procesos"],"descripcion":"Gestiona sistemas agrícolas integrados con enfoque productivo, técnico y sostenible a lo largo del ciclo de cultivo.","desempate":46}]};
+
+/* Fórmula del Excel: 0.4 área + 0.4 fortalezas (0.5 c/u) + 0.2 objetivo.
+   Desempate: a igual porcentaje gana el programa con "desempate" mayor. */
+const PESO_AREA = 0.4, PESO_FORTALEZAS = 0.4, PESO_OBJETIVO = 0.2;
+
+function calcularTop(area, f1, f2, objetivo, cantidad = 3) {
+  const lista = DATOS.programas.map(p => {
+    const pa = p.areas.includes(area) ? 1 : 0;
+    const pf = (p.fortalezas.includes(f1) ? 0.5 : 0) + (p.fortalezas.includes(f2) ? 0.5 : 0);
+    const po = p.objetivos.includes(objetivo) ? 1 : 0;
+    const total = pa * PESO_AREA + pf * PESO_FORTALEZAS + po * PESO_OBJETIVO;
+    return { programa: p, afinidad: Math.round(total * 100) };
+  });
+  lista.sort((a, b) => (b.afinidad - a.afinidad) || (b.programa.desempate - a.programa.desempate));
+  return lista.slice(0, cantidad);
+}
+
+/* Explicaciones cortas de cada opción */
+const AREAS = {
+  "Tecnología y computación": "Programación, sistemas y soluciones digitales.",
+  "Matemáticas y ciencias exactas": "Números, modelos y razonamiento abstracto.",
+  "Ciencias naturales y experimentales": "Laboratorio, experimentos y método científico.",
+  "Ingeniería y tecnología aplicada": "Aplicar la ciencia para diseñar y mejorar soluciones.",
+  "Electricidad, electrónica y automatización": "Circuitos, control y funcionamiento de equipos.",
+  "Industria, manufactura y producción": "Fabricación, calidad y procesos productivos.",
+  "Medio ambiente y sostenibilidad": "Cuidar los recursos naturales y buscar soluciones sostenibles.",
+  "Agro, territorio y naturaleza": "El campo, los cultivos, los bosques y el territorio.",
+  "Administración, negocios y emprendimiento": "Gestionar organizaciones y convertir ideas en proyectos.",
+  "Educación y enseñanza": "Enseñar y acompañar procesos de aprendizaje.",
+  "Comunicación, medios y creatividad": "Crear contenidos y comunicar ideas con distintos medios.",
+  "Turismo, cultura y servicios": "Patrimonio, hospitalidad y experiencias turísticas.",
+  "Salud y cuidado": "Cuidar la salud y el bienestar de las personas.",
+  "Artes, música y expresión creativa": "Música, artes y expresión creativa.",
+  "Sociedad, cultura y humanidades": "Entender a las personas, la historia y la sociedad.",
+  "Deporte, actividad física y recreación": "Movimiento, deporte y vida activa.",
+  "Idiomas, lenguas y comunicación intercultural": "Lenguas y comunicación entre culturas."
+};
+const FORTALEZAS = {
+  "Razonamiento matemático": "Facilidad con los números y el razonamiento cuantitativo.",
+  "Pensamiento lógico": "Organizar ideas y llegar a conclusiones coherentes.",
+  "Creatividad e imaginación": "Generar ideas originales y ver alternativas.",
+  "Comunicación": "Expresar ideas con claridad, escuchar y argumentar.",
+  "Curiosidad e investigación": "Preguntar, explorar y buscar evidencia.",
+  "Afinidad con la tecnología": "Facilidad e interés por usar y explorar tecnología.",
+  "Liderazgo e iniciativa": "Proponer, mover a otros y asumir responsabilidades.",
+  "Resolución de problemas": "Analizar alternativas y plantear soluciones viables.",
+  "Habilidad práctica": "Aprender haciendo, con herramientas y materiales.",
+  "Análisis e interpretación de información": "Examinar datos, encontrar patrones y concluir.",
+  "Organización y gestión": "Planear, ordenar recursos y hacer seguimiento.",
+  "Sensibilidad ambiental": "Conciencia por el cuidado del entorno.",
+  "Trabajo con personas y empatía": "Relacionarte y entender lo que otros necesitan.",
+  "Atención al detalle y precisión": "Trabajar con cuidado y exactitud.",
+  "Sensibilidad y expresión artística": "Percibir y expresar ideas y emociones con el arte.",
+  "Pensamiento crítico": "Cuestionar, evaluar argumentos y formar criterio propio."
+};
+const OBJETIVOS = {
+  "Crear y desarrollar tecnología": "Crear sistemas, herramientas y soluciones tecnológicas.",
+  "Investigar y generar conocimiento": "Profundizar en problemas para producir nuevo conocimiento.",
+  "Diseñar, construir o mejorar soluciones": "Concebir y optimizar productos, sistemas o procesos.",
+  "Dirigir empresas, equipos o proyectos": "Liderar, coordinar y tomar decisiones.",
+  "Crear mi propio negocio o emprender": "Convertir ideas en empresas o proyectos propios.",
+  "Trabajar por el medio ambiente y la sostenibilidad": "Proteger el ambiente y usar los recursos con responsabilidad.",
+  "Enseñar y formar a otras personas": "Acompañar procesos de aprendizaje.",
+  "Trabajar en industria, producción y procesos": "Gestionar y mejorar entornos productivos.",
+  "Contribuir al desarrollo del campo y los territorios": "Aportar al desarrollo rural y territorial.",
+  "Trabajar con personas y contribuir a la sociedad": "Una profesión de servicio y transformación social.",
+  "Desarrollarme en turismo, cultura y servicios": "Una carrera en turismo, patrimonio y hospitalidad.",
+  "Analizar información y resolver problemas complejos": "Usar datos y modelos para entender y decidir.",
+  "Cuidar la salud y mejorar el bienestar": "Contribuir a la salud y al bienestar de las personas.",
+  "Crear, interpretar o desarrollar expresiones artísticas y culturales": "Crear o interpretar arte y cultura."
+};
+
+/* ====================================================================
+   Utilidades
+   ==================================================================== */
+const $ = (id) => document.getElementById(id);
+const modoDepuracion = /[?&]debug\b/.test(location.search);
+
+function depurar(msg) {
+  if (!modoDepuracion) return;
+  const caja = $("depuracion");
+  caja.hidden = false;
+  caja.textContent += new Date().toLocaleTimeString() + "  " + msg + "\n";
+  console.log("[test]", msg);
+}
+
+/* Código de esta persona. Empieza por Z (el juego nunca lo usa) y tiene 6 caracteres:
+   así no se cruza con los del juego y casi no se repite entre personas. */
+const ALFABETO = "ACEFHJKMNPRTWXY3479";
+function nuevoCodigo() {
+  const bytes = new Uint8Array(5);
+  if (self.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+  else for (let i = 0; i < 5; i++) bytes[i] = Math.floor(Math.random() * 256);
+  let c = "Z";
+  for (const b of bytes) c += ALFABETO[b % ALFABETO.length];
+  return c;
+}
+
+/* ====================================================================
+   Envío a Google Forms con cola (si no hay internet, reintenta solo)
+   ==================================================================== */
+const CLAVE_COLA = "utp_test_cola_envios";
+let enviando = false;
+let memoriaCola = [];
+
+function leerCola() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_COLA) || "[]"); } catch (e) { return memoriaCola; }
+}
+function guardarCola(cola) {
+  memoriaCola = cola;
+  try { localStorage.setItem(CLAVE_COLA, JSON.stringify(cola)); } catch (e) { /* modo privado: queda en memoria */ }
+}
+
+function encolar(cfg, valores, nombre) {
+  const cuerpo = new URLSearchParams();
+  for (const [clave, valor] of Object.entries(valores)) {
+    const entry = cfg.campos[clave];
+    if (entry && valor !== undefined && valor !== null && String(valor) !== "") cuerpo.append(entry, String(valor));
+  }
+  const cola = leerCola();
+  cola.push({ url: cfg.url, cuerpo: cuerpo.toString(), nombre });
+  guardarCola(cola.slice(-200));
+  depurar("En cola: " + nombre + " -> " + decodeURIComponent(cuerpo.toString()).replace(/&/g, "  "));
+  enviarPendientes();
+}
+
+async function enviarPendientes() {
+  if (enviando) return;
+  enviando = true;
+  try {
+    /* La cola se vuelve a leer en cada vuelta: mientras se envía un elemento
+       pueden agregarse otros, y no deben perderse. */
+    let cola = leerCola();
+    while (cola.length) {
+      const item = cola[0];
+      try {
+        /* no-cors: Google no deja leer la respuesta desde otra página, pero sí recibe el envío. */
+        await fetch(item.url, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+          body: item.cuerpo
+        });
+        depurar("Enviado: " + item.nombre);
+        cola = leerCola();
+        cola.shift();
+        guardarCola(cola);
+      } catch (e) {
+        depurar("Sin conexión, se reintenta (" + item.nombre + ")");
+        break;
+      }
+    }
+  } finally {
+    enviando = false;
+  }
+}
+addEventListener("online", enviarPendientes);
+setInterval(enviarPendientes, 30000);
+
+/* ====================================================================
+   Formulario
+   ==================================================================== */
+let codigo = nuevoCodigo();
+
+function opcion(tipo, nombre, valor, detalle) {
+  const fila = document.createElement("div");
+  fila.className = "opcion";
+  const id = nombre + "-" + Math.random().toString(36).slice(2, 8);
+  const input = document.createElement("input");
+  input.type = tipo; input.name = nombre; input.value = valor; input.id = id;
+  const etiqueta = document.createElement("label");
+  etiqueta.htmlFor = id;
+  const b = document.createElement("b"); b.textContent = valor;
+  etiqueta.append(b);
+  if (detalle) { const s = document.createElement("small"); s.textContent = detalle; etiqueta.append(s); }
+  fila.append(input, etiqueta);
+  return fila;
+}
+
+function construir() {
+  const area = $("op-area"), fort = $("op-fort"), obj = $("op-obj");
+  area.textContent = ""; fort.textContent = ""; obj.textContent = "";
+  DATOS.areas.forEach(a => area.append(opcion("radio", "area", a, AREAS[a])));
+  DATOS.fortalezas.forEach(f => fort.append(opcion("checkbox", "fortaleza", f, FORTALEZAS[f])));
+  DATOS.objetivos.forEach(o => obj.append(opcion("radio", "objetivo", o, OBJETIVOS[o])));
+}
+
+/* Máximo dos fortalezas: al llegar a dos, las demás casillas se desactivan. */
+$("op-fort").addEventListener("change", () => {
+  const marcadas = $("op-fort").querySelectorAll("input:checked").length;
+  $("op-fort").querySelectorAll("input").forEach(i => { i.disabled = marcadas >= 2 && !i.checked; });
+  $("contador").textContent = "Llevas " + marcadas + " de 2." + (marcadas >= 2 ? " Quita una si quieres cambiarla." : "");
+});
+
+function elegido(nombre) {
+  const r = document.querySelector('input[name="' + nombre + '"]:checked');
+  return r ? r.value : "";
+}
+
+$("form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const nombre = $("nombre").value.replace(/\s+/g, " ").trim();
+  const correo = $("correo").value.trim().toLowerCase();
+  const celular = $("celular").value.replace(/[\s()\-]/g, "");
+  const area = elegido("area");
+  const fortalezas = [...document.querySelectorAll('input[name="fortaleza"]:checked')].map(i => i.value);
+  const objetivo = elegido("objetivo");
+
+  const faltan = [];
+  if (nombre.length < 3) faltan.push(["nombre", "Escribe tu nombre completo."]);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) faltan.push(["correo", "Escribe un correo válido, por ejemplo nombre@correo.com."]);
+  if (!/^\+?\d{7,15}$/.test(celular)) faltan.push(["celular", "Escribe tu celular solo con números, por ejemplo 3001234567."]);
+  if (!$("autoriza").checked) faltan.push(["autoriza", "Marca la casilla de autorización para poder continuar."]);
+  if (!area) faltan.push(["f-area", "Elige un área de interés."]);
+  if (fortalezas.length !== 2) faltan.push(["f-fort", "Elige exactamente dos fortalezas."]);
+  if (!objetivo) faltan.push(["f-obj", "Elige un objetivo."]);
+
+  const caja = $("errores");
+  if (faltan.length) {
+    caja.hidden = false;
+    caja.textContent = "";
+    const t = document.createElement("div"); t.textContent = "Revisa esto antes de ver tu resultado:";
+    const ul = document.createElement("ul");
+    faltan.forEach(([id, msg]) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a"); a.href = "#" + id; a.textContent = msg;
+      a.addEventListener("click", (ev) => { ev.preventDefault(); const el = $(id); el.scrollIntoView({ block: "center" }); if (el.focus) el.focus(); });
+      li.append(a); ul.append(li);
+    });
+    caja.append(t, ul);
+    caja.focus();
+    return;
+  }
+  caja.hidden = true;
+
+  const top = calcularTop(area, fortalezas[0], fortalezas[1], objetivo);
+
+  /* Registro (datos y autorización) */
+  if (!CONFIG.registro.campos.autorizacion) {
+    depurar("AVISO: falta CONFIG.registro.campos.autorizacion; el Form pide esa casilla y rechazaría el registro.");
+  } else {
+    encolar(CONFIG.registro, {
+      codigo, nombre, correo, celular, autorizacion: CONFIG.registro.textoAutorizacion
+    }, "registro " + codigo);
+  }
+  /* Resultado */
+  const res = { codigo, area, fortaleza1: fortalezas[0], fortaleza2: fortalezas[1], objetivo, origen: CONFIG.resultado.valorOrigen };
+  top.forEach((t, i) => { res["t" + (i + 1)] = t.programa.nombre; res["p" + (i + 1)] = t.afinidad; });
+  encolar(CONFIG.resultado, res, "resultado " + codigo);
+
+  mostrarResultado(top, nombre, area, fortalezas, objetivo);
+});
+
+function mostrarResultado(top, nombre, area, fortalezas, objetivo) {
+  $("res-saludo").textContent = nombre.split(" ")[0] + ", estas son las carreras de la UTP que mejor coinciden con lo que elegiste.";
+  const lista = $("res-lista"); lista.textContent = "";
+  top.forEach(t => {
+    const p = t.programa;
+    const li = document.createElement("li");
+    const n = document.createElement("b"); n.textContent = p.nombre;
+    const pct = document.createElement("div"); pct.className = "pct"; pct.textContent = "Afinidad: " + t.afinidad + "%";
+    const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = p.nivel + ". " + p.facultad + ". " + p.modalidad + ".";
+    const desc = document.createElement("div"); desc.textContent = p.descripcion;
+    li.append(n, pct, meta, desc);
+    const coincide = [];
+    if (p.areas.includes(area)) coincide.push("tu área (" + area + ")");
+    const f = fortalezas.filter(x => p.fortalezas.includes(x));
+    if (f.length) coincide.push((f.length > 1 ? "tus fortalezas" : "tu fortaleza") + " (" + f.join(", ") + ")");
+    if (p.objetivos.includes(objetivo)) coincide.push("tu objetivo (" + objetivo + ")");
+    if (coincide.length) { const c = document.createElement("div"); c.className = "coincide"; c.textContent = "Coincide con " + coincide.join("; ") + "."; li.append(c); }
+    lista.append(li);
+  });
+  $("res-codigo").textContent = "Tu código de resultado: " + codigo;
+  $("vista-form").hidden = true;
+  $("vista-res").hidden = false;
+  scrollTo(0, 0);
+  $("t-res").focus();
+}
+
+$("otra-vez").addEventListener("click", () => {
+  $("form").reset();
+  construir();
+  $("contador").textContent = "Llevas 0 de 2.";
+  codigo = nuevoCodigo();
+  $("vista-res").hidden = true;
+  $("vista-form").hidden = false;
+  scrollTo(0, 0);
+});
+
+construir();
+enviarPendientes();
+if (modoDepuracion) depurar("Modo de depuración activo. Cola pendiente: " + leerCola().length);
+</script>
+</body>
+</html>
